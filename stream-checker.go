@@ -34,21 +34,23 @@ type StreamCenter struct {
 func (s Stream) FakeFetch() (string, error) {
 	fmt.Println("fake fetching")
 
-	resp, err := http.Get("https://en.wikipedia.org/w/api.php?format=json&action=query&titles=" + s.Name)
+	resp, err := http.Get("https://test-server.address/?query=" + s.Name)
 	if err != nil {
-		return "", fmt.Errorf("%s: wiki api query error", s.Name)
+		return "", fmt.Errorf("%s: api query error", s.Name)
 	}
 	defer resp.Body.Close()
 
 	responseData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("%s: wiki response body parse error", s.Name)
+		return "", fmt.Errorf("%s: response body parse error", s.Name)
 	}
 	return string(responseData), nil
 }
 
 func checUrls(streamCenter *StreamCenter) {
 	streamCenter.RLock()
+	defer streamCenter.RUnlock()
+
 	for k := range streamCenter.s {
 		if _, err := streamCenter.s[k].FakeFetch(); err != nil {
 			streamCenter.Lock()
@@ -59,11 +61,10 @@ func checUrls(streamCenter *StreamCenter) {
 
 		// here we can do smth with successfully fetched streams
 	}
-	streamCenter.RUnlock()
 }
 
 func getStreams(db *sqlx.DB, streamCenter *StreamCenter) {
-	rows, err := db.Queryx("SELECT * FROM t2.stream")
+	rows, err := db.Queryx("SELECT * FROM stream")
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -112,7 +113,7 @@ func waitForNotification(l *pq.Listener, streamCenter *StreamCenter) {
 }
 
 func main() {
-	var conninfo string = "user=cw67yu3 password=f3v!ve-m3re7vf%bgt9r dbname=tele2 sslmode=disable"
+	var conninfo string = "user=user password=password dbname=db sslmode=disable"
 	var streams = make(map[int]*Stream)
 	var streamCenter = StreamCenter{s: streams}
 
